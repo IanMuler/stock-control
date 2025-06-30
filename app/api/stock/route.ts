@@ -29,15 +29,23 @@ export async function GET(request: NextRequest) {
     }
 
     if (categoryId) {
-      where.categoryId = categoryId;
+      where.categories = {
+        some: {
+          categoryId: categoryId,
+        },
+      };
     }
 
     // Get products with stock info
     const products = await prisma.product.findMany({
       where,
       include: {
-        category: {
-          select: { name: true },
+        categories: {
+          include: {
+            category: {
+              select: { id: true, name: true },
+            },
+          },
         },
         _count: {
           select: { movements: true },

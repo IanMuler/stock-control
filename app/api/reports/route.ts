@@ -31,7 +31,13 @@ export async function GET(request: NextRequest) {
         data = await prisma.product.findMany({
           where: {
             isActive: true,
-            ...(category && category !== "all" && { categoryId: category }),
+            ...(category && category !== "all" && {
+              categories: {
+                some: {
+                  categoryId: category,
+                },
+              },
+            }),
           },
           select: {
             id: true,
@@ -39,8 +45,12 @@ export async function GET(request: NextRequest) {
             name: true,
             currentStock: true,
             minStock: true,
-            category: {
-              select: { name: true },
+            categories: {
+              select: {
+                category: {
+                  select: { name: true },
+                },
+              },
             },
           },
         });
@@ -60,7 +70,15 @@ export async function GET(request: NextRequest) {
                 lte: new Date(endDate),
               },
               ...(category &&
-                category !== "all" && { product: { categoryId: category } }),
+                category !== "all" && {
+                  product: {
+                    categories: {
+                      some: {
+                        categoryId: category,
+                      },
+                    },
+                  },
+                }),
             },
             include: {
               product: {
@@ -70,6 +88,13 @@ export async function GET(request: NextRequest) {
                   name: true,
                   currentStock: true,
                   minStock: true,
+                  categories: {
+                    select: {
+                      category: {
+                        select: { name: true },
+                      },
+                    },
+                  },
                 },
               },
             },
@@ -82,7 +107,7 @@ export async function GET(request: NextRequest) {
               name: m.product.name,
               currentStock: m.product.currentStock,
               minStock: m.product.minStock,
-              category: m.product.category?.name || "-",
+              category: m.product.categories?.[0]?.category?.name || "-",
             }))
           );
         break;
@@ -93,7 +118,13 @@ export async function GET(request: NextRequest) {
             currentStock: {
               lte: prisma.product.fields.minStock,
             },
-            ...(category && category !== "all" && { categoryId: category }),
+            ...(category && category !== "all" && {
+              categories: {
+                some: {
+                  categoryId: category,
+                },
+              },
+            }),
           },
           select: {
             id: true,
@@ -101,8 +132,12 @@ export async function GET(request: NextRequest) {
             name: true,
             currentStock: true,
             minStock: true,
-            category: {
-              select: { name: true },
+            categories: {
+              select: {
+                category: {
+                  select: { name: true },
+                },
+              },
             },
           },
         });
@@ -121,7 +156,7 @@ export async function GET(request: NextRequest) {
         name: item.name,
         currentStock: item.currentStock,
         minStock: item.minStock,
-        category: item.category?.name || "-",
+        category: item.categories?.[0]?.category?.name || "-",
       })),
     };
 

@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { MainLayout } from "@/components/layout/main-layout"
 import { Package, TrendingUp, TrendingDown, AlertTriangle, ArrowUpCircle, ArrowDownCircle } from "lucide-react"
 import Link from "next/link"
+import { StockInModal, StockOutModal, useStockMovements } from "@/components/stock/stock-movements"
 
 interface DashboardStats {
   totalProducts: number
@@ -44,6 +45,8 @@ export default function DashboardPage() {
     queryKey: ["dashboard-stats"],
     queryFn: fetchDashboardStats,
   })
+
+  const { stockIn, stockOut } = useStockMovements()
 
   if (isLoading) {
     return (
@@ -82,17 +85,13 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
           <div className="flex space-x-2">
-            <Button asChild>
-              <Link href="/movements/in">
-                <ArrowUpCircle className="h-4 w-4 mr-2" />
-                Nueva Entrada
-              </Link>
+            <Button onClick={() => stockIn.setOpen(true)} className="bg-green-600 hover:bg-green-700">
+              <ArrowUpCircle className="h-4 w-4 mr-2" />
+              Entrada
             </Button>
-            <Button variant="outline" asChild>
-              <Link href="/movements/out">
-                <ArrowDownCircle className="h-4 w-4 mr-2" />
-                Nueva Salida
-              </Link>
+            <Button onClick={() => stockOut.setOpen(true)} className="bg-red-600 hover:bg-red-700">
+              <ArrowDownCircle className="h-4 w-4 mr-2" />
+              Salida
             </Button>
           </div>
         </div>
@@ -189,7 +188,7 @@ export default function DashboardPage() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Button variant="outline" className="h-20" asChild>
-                <Link href="/products/new" className="flex flex-col">
+                <Link href="/products?action=nuevo" className="flex flex-col">
                   <Package className="h-6 w-6 mb-2" />
                   Nuevo Producto
                 </Link>
@@ -210,6 +209,16 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <StockInModal 
+        open={stockIn.open} 
+        onOpenChange={stockIn.setOpen} 
+      />
+      
+      <StockOutModal 
+        open={stockOut.open} 
+        onOpenChange={stockOut.setOpen} 
+      />
     </MainLayout>
   )
 }

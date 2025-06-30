@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { parse } from "json2csv";
+import { exportToExcel, REPORT_CONFIGS } from "@/lib/export-excel";
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,15 +32,25 @@ export async function GET(request: NextRequest) {
         data = await prisma.product.findMany({
           where: {
             isActive: true,
-            ...(category && category !== "all" && { categoryId: category }),
+            ...(category && category !== "all" && {
+              categories: {
+                some: {
+                  categoryId: category,
+                },
+              },
+            }),
           },
           select: {
             code: true,
             name: true,
             currentStock: true,
             minStock: true,
-            category: {
-              select: { name: true },
+            categories: {
+              select: {
+                category: {
+                  select: { name: true },
+                },
+              },
             },
           },
         });
@@ -60,7 +70,15 @@ export async function GET(request: NextRequest) {
                 lte: new Date(endDate),
               },
               ...(category &&
-                category !== "all" && { product: { categoryId: category } }),
+                category !== "all" && {
+                  product: {
+                    categories: {
+                      some: {
+                        categoryId: category,
+                      },
+                    },
+                  },
+                }),
             },
             include: {
               product: {
@@ -69,6 +87,13 @@ export async function GET(request: NextRequest) {
                   name: true,
                   currentStock: true,
                   minStock: true,
+                  categories: {
+                    select: {
+                      category: {
+                        select: { name: true },
+                      },
+                    },
+                  },
                 },
               },
             },
@@ -79,7 +104,7 @@ export async function GET(request: NextRequest) {
               name: m.product.name,
               currentStock: m.product.currentStock,
               minStock: m.product.minStock,
-              category: m.product.category?.name || "-",
+              category: m.product.categories?.[0]?.category?.name || "-",
             }))
           );
         break;
@@ -90,15 +115,25 @@ export async function GET(request: NextRequest) {
             currentStock: {
               lte: prisma.product.fields.minStock,
             },
-            ...(category && category !== "all" && { categoryId: category }),
+            ...(category && category !== "all" && {
+              categories: {
+                some: {
+                  categoryId: category,
+                },
+              },
+            }),
           },
           select: {
             code: true,
             name: true,
             currentStock: true,
             minStock: true,
-            category: {
-              select: { name: true },
+            categories: {
+              select: {
+                category: {
+                  select: { name: true },
+                },
+              },
             },
           },
         });
@@ -110,23 +145,35 @@ export async function GET(request: NextRequest) {
         );
     }
 
-    const formattedData = data.map((item: any) => ({
-      Código: item.code,
-      Nombre: item.name,
-      "Stock Actual": item.currentStock,
-      "Stock Mínimo": item.minStock,
-      Categoría: item.category?.name || "-",
-    }));
+    // Obtener configuración del reporte
+    const reportConfig = REPORT_CONFIGS[type as keyof typeof REPORT_CONFIGS];
+    if (!reportConfig) {
+      return NextResponse.json(
+        { error: "Invalid report type" },
+        { status: 400 }
+      );
+    }
 
-    const csv = parse(formattedData, {
-      fields: ["Código", "Nombre", "Stock Actual", "Stock Mínimo", "Categoría"],
+    // Generar archivo Excel usando la función reutilizable
+    const timestamp = new Date().toISOString().split('T')[0];
+    const filename = `reporte-${type}-${timestamp}.xlsx`;
+
+    const excelBlob = exportToExcel({
+      data,
+      columns: reportConfig.columns,
+      sheetName: reportConfig.sheetName,
+      filename
     });
 
-    return new NextResponse(csv, {
+    // Convertir blob a buffer para NextResponse
+    const arrayBuffer = await excelBlob.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    return new NextResponse(buffer, {
       status: 200,
       headers: {
-        "Content-Type": "text/csv",
-        "Content-Disposition": `attachment; filename=reporte-${type}.csv`,
+        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Disposition": `attachment; filename="${filename}"`,
       },
     });
   } catch (error) {

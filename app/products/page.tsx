@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useSearchParams } from "next/navigation"
 import { MainLayout } from "@/components/layout/main-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -12,8 +13,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Search, Package, Plus, AlertTriangle, Eye, EyeOff } from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useToast } from "@/hooks/use-toast"
+import { Search, Package, Plus, AlertTriangle, Eye, EyeOff, X, Edit } from "lucide-react"
 import Link from "next/link"
+import { EditProductModal } from "@/components/products/edit-product-modal"
 
 interface Product {
     id: string
@@ -100,26 +104,135 @@ export async function toggleProductStatus(id: string, isActive: boolean) {
     return res.json();
 }
 
+interface ProductFormData {
+    code: string
+    name: string
+    description: string
+    unit: string
+    minStock: number
+    categoryIds: string[]
+}
+
+async function createProduct(data: ProductFormData) {
+    const response = await fetch("/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+    })
+    if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to create product")
+    }
+    return response.json()
+}
+
 export default function ProductsPage() {
     const [search, setSearch] = useState("")
     const [selectedCategory, setSelectedCategory] = useState<string>("all")
     const [includeInactive, setIncludeInactive] = useState(false)
-    const [debouncedSearch, setDebouncedSearch] = useState("")
+    const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; product: Product | null; action: 'activate' | 'deactivate' }>({ open: false, product: null, action: 'deactivate' })
+    const [newProductDialog, setNewProductDialog] = useState(false)
+    const [editProductDialog, setEditProductDialog] = useState(false)
+    const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+    const [productFormData, setProductFormData] = useState<ProductFormData>({
+        code: "",
+        name: "",
+        description: "",
+        unit: "unidad",
+        minStock: 0,
+        categoryIds: [],
+    })
 
     const queryClient = useQueryClient();
+    const { toast } = useToast();
+    const searchParams = useSearchParams()
+
+    // Auto-open modal based on URL params
+    useEffect(() => {
+        const action = searchParams.get('action')
+        if (action === 'nuevo') {
+            setNewProductDialog(true)
+        }
+    }, [searchParams])
 
     const deleteMutation = useMutation({
         mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) => toggleProductStatus(id, isActive),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ["products"] }),
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({ queryKey: ["products"] })
+            const action = variables.isActive ? 'activado' : 'desactivado'
+            toast({
+                title: "¡Éxito!",
+                description: `Producto ${action} correctamente.`,
+            })
+            setConfirmDialog({ open: false, product: null, action: 'deactivate' })
+        },
+        onError: (error) => {
+            toast({
+                title: "Error",
+                description: "No se pudo cambiar el estado del producto.",
+                variant: "destructive",
+            })
+        }
     });
 
-    // Debounce search
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setDebouncedSearch(search)
-        }, 300)
-        return () => clearTimeout(timer)
-    }, [search])
+    const createProductMutation = useMutation({
+        mutationFn: createProduct,
+        onSuccess: () => {
+            toast({
+                title: "Producto creado",
+                description: "El producto se ha agregado correctamente",
+            })
+            queryClient.invalidateQueries({ queryKey: ["products"] })
+            setNewProductDialog(false)
+            setProductFormData({
+                code: "",
+                name: "",
+                description: "",
+                unit: "unidad",
+                minStock: 0,
+                categoryIds: [],
+            })
+        },
+        onError: (error: Error) => {
+            toast({
+                title: "Error",
+                description: error.message,
+                variant: "destructive",
+            })
+        },
+    })
+
+    const handleToggleStatus = (product: Product) => {
+        const action = product.isActive ? 'deactivate' : 'activate'
+        setConfirmDialog({ open: true, product, action })
+    }
+
+    const confirmToggleStatus = () => {
+        if (confirmDialog.product) {
+            deleteMutation.mutate({ 
+                id: confirmDialog.product.id, 
+                isActive: !confirmDialog.product.isActive 
+            })
+        }
+    }
+
+    const handleCreateProduct = (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!productFormData.code || !productFormData.name) {
+            toast({
+                title: "Error de validación",
+                description: "El código y el nombre son obligatorios",
+                variant: "destructive",
+            })
+            return
+        }
+        createProductMutation.mutate(productFormData)
+    }
+
+    const handleEditProduct = (product: Product) => {
+        setEditingProduct(product)
+        setEditProductDialog(true)
+    }
 
     const { data: allProducts, isLoading, error } = useQuery({
         queryKey: ["products"],
@@ -134,8 +247,8 @@ export default function ProductsPage() {
     // Filtrado local con useMemo para optimización
     const filteredProducts = useMemo(() => {
         if (!allProducts) return []
-        return filterProducts(allProducts, debouncedSearch, selectedCategory, includeInactive)
-    }, [allProducts, debouncedSearch, selectedCategory, includeInactive])
+        return filterProducts(allProducts, search, selectedCategory, includeInactive)
+    }, [allProducts, search, selectedCategory, includeInactive])
 
     if (error) {
         return (
@@ -153,11 +266,9 @@ export default function ProductsPage() {
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
                     <h1 className="text-2xl font-bold text-gray-900">Productos</h1>
-                    <Button asChild>
-                        <Link href="/products/new">
-                            <Plus className="h-4 w-4 mr-2" />
-                            Agregar Producto
-                        </Link>
+                    <Button onClick={() => setNewProductDialog(true)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Agregar Producto
                     </Button>
                 </div>
 
@@ -280,28 +391,31 @@ export default function ProductsPage() {
                                                         </TableCell>
                                                         <TableCell className="text-right text-gray-500">{product.minStock}</TableCell>
                                                         <TableCell className="text-sm text-gray-500">{product.unit}</TableCell>
-                                                        <TableCell className="text-right flex gap-4">
-                                                            <Button variant="outline" size="sm" asChild>
-                                                                <Link href={`/products/${product.id}/edit`}>Editar</Link>
-                                                            </Button>
-                                                            <Button
-                                                                variant={product.isActive ? "destructive" : "default"}
-                                                                size="sm"
-                                                                className="ml-2"
-                                                                onClick={() => deleteMutation.mutate({ id: product.id, isActive: !product.isActive })}
-                                                            >
-                                                                {product.isActive ? (
-                                                                    <>
-                                                                        <EyeOff className="h-4 w-4 mr-1" />
-                                                                        Desactivar
-                                                                    </>
-                                                                ) : (
-                                                                    <>
-                                                                        <Eye className="h-4 w-4 mr-1" />
-                                                                        Activar
-                                                                    </>
-                                                                )}
-                                                            </Button>
+                                                        <TableCell className="text-right">
+                                                            <div className="flex justify-end gap-2">
+                                                                <Button 
+                                                                    variant="outline" 
+                                                                    size="icon"
+                                                                    className="h-8 w-8"
+                                                                    onClick={() => handleEditProduct(product)}
+                                                                    title="Editar producto"
+                                                                >
+                                                                    <Edit className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    variant={product.isActive ? "destructive" : "default"}
+                                                                    size="icon"
+                                                                    className="h-8 w-8"
+                                                                    onClick={() => handleToggleStatus(product)}
+                                                                    title={product.isActive ? "Desactivar producto" : "Activar producto"}
+                                                                >
+                                                                    {product.isActive ? (
+                                                                        <EyeOff className="h-4 w-4" />
+                                                                    ) : (
+                                                                        <Eye className="h-4 w-4" />
+                                                                    )}
+                                                                </Button>
+                                                            </div>
                                                         </TableCell>
                                                     </TableRow>
                                                 )
@@ -317,6 +431,170 @@ export default function ProductsPage() {
                     </CardContent>
                 </Card>
             </div>
+            
+            <Dialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog({ ...confirmDialog, open })}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>
+                            {confirmDialog.action === 'deactivate' ? 'Desactivar producto' : 'Activar producto'}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {confirmDialog.action === 'deactivate' 
+                                ? `¿Estás seguro que deseas desactivar el producto "${confirmDialog.product?.name}"? Este producto no aparecerá en los listados activos.`
+                                : `¿Estás seguro que deseas activar el producto "${confirmDialog.product?.name}"?`
+                            }
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button 
+                            variant="outline" 
+                            onClick={() => setConfirmDialog({ open: false, product: null, action: 'deactivate' })}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button 
+                            variant={confirmDialog.action === 'deactivate' ? 'destructive' : 'default'}
+                            onClick={confirmToggleStatus}
+                            disabled={deleteMutation.isPending}
+                        >
+                            {deleteMutation.isPending ? 'Procesando...' : (confirmDialog.action === 'deactivate' ? 'Desactivar' : 'Activar')}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* New Product Modal */}
+            <Dialog open={newProductDialog} onOpenChange={setNewProductDialog}>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Nuevo Producto</DialogTitle>
+                        <DialogDescription>
+                            Ingresa los detalles del nuevo producto
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleCreateProduct} className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="code">Código</Label>
+                            <Input
+                                id="code"
+                                value={productFormData.code}
+                                onChange={(e) => setProductFormData((prev) => ({ ...prev, code: e.target.value }))}
+                                placeholder="Código único del producto"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="name">Nombre</Label>
+                            <Input
+                                id="name"
+                                value={productFormData.name}
+                                onChange={(e) => setProductFormData((prev) => ({ ...prev, name: e.target.value }))}
+                                placeholder="Nombre del producto"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="description">Descripción</Label>
+                            <Input
+                                id="description"
+                                value={productFormData.description}
+                                onChange={(e) => setProductFormData((prev) => ({ ...prev, description: e.target.value }))}
+                                placeholder="Descripción opcional"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="unit">Unidad</Label>
+                            <Input
+                                id="unit"
+                                value={productFormData.unit}
+                                onChange={(e) => setProductFormData((prev) => ({ ...prev, unit: e.target.value }))}
+                                placeholder="Unidad de medida (e.g., unidad, caja, litro)"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="minStock">Stock Mínimo</Label>
+                            <Input
+                                id="minStock"
+                                type="number"
+                                value={productFormData.minStock}
+                                onChange={(e) => setProductFormData((prev) => ({ ...prev, minStock: Number.parseInt(e.target.value) || 0 }))}
+                                placeholder="Stock mínimo para alertas"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Categorías</Label>
+                            <div className="border rounded-md p-3 space-y-2 max-h-32 overflow-y-auto">
+                                {categories && categories.length === 0 ? (
+                                    <p className="text-sm text-gray-500">No hay categorías disponibles</p>
+                                ) : (
+                                    categories?.map((category) => (
+                                        <div key={category.id} className="flex items-center space-x-2">
+                                            <Checkbox
+                                                id={`new-category-${category.id}`}
+                                                checked={productFormData.categoryIds.includes(category.id)}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked) {
+                                                        setProductFormData((prev) => ({
+                                                            ...prev,
+                                                            categoryIds: [...prev.categoryIds, category.id]
+                                                        }))
+                                                    } else {
+                                                        setProductFormData((prev) => ({
+                                                            ...prev,
+                                                            categoryIds: prev.categoryIds.filter(id => id !== category.id)
+                                                        }))
+                                                    }
+                                                }}
+                                            />
+                                            <Label
+                                                htmlFor={`new-category-${category.id}`}
+                                                className="text-sm font-normal cursor-pointer"
+                                            >
+                                                {category.name}
+                                            </Label>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                            {productFormData.categoryIds.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-2">
+                                    {productFormData.categoryIds.map((categoryId) => {
+                                        const category = categories?.find(c => c.id === categoryId)
+                                        return category ? (
+                                            <Badge key={categoryId} variant="secondary" className="text-xs">
+                                                {category.name}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setProductFormData((prev) => ({
+                                                        ...prev,
+                                                        categoryIds: prev.categoryIds.filter(id => id !== categoryId)
+                                                    }))}
+                                                    className="ml-1 text-gray-500 hover:text-gray-700"
+                                                >
+                                                    <X className="h-3 w-3" />
+                                                </button>
+                                            </Badge>
+                                        ) : null
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                        <DialogFooter>
+                            <Button type="button" variant="outline" onClick={() => setNewProductDialog(false)}>
+                                Cancelar
+                            </Button>
+                            <Button type="submit" disabled={createProductMutation.isPending}>
+                                {createProductMutation.isPending ? "Guardando..." : "Guardar Producto"}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Edit Product Modal */}
+            <EditProductModal 
+                open={editProductDialog} 
+                onOpenChange={setEditProductDialog}
+                product={editingProduct}
+            />
         </MainLayout >
     )
 }

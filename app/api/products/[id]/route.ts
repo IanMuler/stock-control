@@ -18,7 +18,18 @@ export async function GET(
 
     const product = await prisma.product.findUnique({
       where: { id: params.id },
-      include: { category: { select: { id: true, name: true } } },
+      include: {
+        categories: {
+          include: {
+            category: {
+              select: { id: true, name: true },
+            },
+          },
+        },
+        _count: {
+          select: { movements: true },
+        },
+      },
     });
 
     if (!product) {
@@ -49,7 +60,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { code, name, description, unit, minStock, categoryId } = body;
+    const { code, name, description, unit, minStock, categoryIds } = body;
 
     if (!code || !name) {
       return NextResponse.json(
@@ -69,17 +80,40 @@ export async function PUT(
       );
     }
 
-    const product = await prisma.product.update({
-      where: { id: params.id },
-      data: {
-        code,
-        name,
-        description: description || "",
-        unit: unit || "unidad",
-        minStock: minStock || 0,
-        categoryId: categoryId || null,
-      },
-      include: { category: { select: { id: true, name: true } } },
+    const product = await prisma.$transaction(async (tx) => {
+      // Eliminar las categorías existentes
+      await tx.productCategory.deleteMany({
+        where: { productId: params.id },
+      });
+
+      // Actualizar el producto y crear las nuevas relaciones de categorías
+      return tx.product.update({
+        where: { id: params.id },
+        data: {
+          code,
+          name,
+          description: description || "",
+          unit: unit || "unidad",
+          minStock: minStock || 0,
+          categories: {
+            create: categoryIds ? categoryIds.map((categoryId: string) => ({
+              categoryId,
+            })) : [],
+          },
+        },
+        include: {
+          categories: {
+            include: {
+              category: {
+                select: { id: true, name: true },
+              },
+            },
+          },
+          _count: {
+            select: { movements: true },
+          },
+        },
+      });
     });
 
     return NextResponse.json(product);

@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react"
 import { useQuery } from "@tanstack/react-query"
+import { useSearchParams } from "next/navigation"
 import { MainLayout } from "@/components/layout/main-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -10,7 +11,9 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, Download, AlertTriangle, Package } from "lucide-react"
+import { Search, AlertTriangle, Package, ArrowUpCircle, ArrowDownCircle } from "lucide-react"
+import { StockInModal, StockOutModal, useStockMovements } from "@/components/stock/stock-movements"
+import { ExportExcelButton } from "@/components/ui/export-excel-button"
 
 interface Product {
   id: string
@@ -72,15 +75,19 @@ function filterStockProducts(products: Product[], search: string, categoryId: st
 export default function StockPage() {
   const [search, setSearch] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("") // Updated default value
-  const [debouncedSearch, setDebouncedSearch] = useState("")
+  
+  const searchParams = useSearchParams()
+  const { stockIn, stockOut } = useStockMovements()
 
-  // Debounce search
+  // Auto-open modals based on URL params
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(search)
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [search])
+    const action = searchParams.get('action')
+    if (action === 'entrada') {
+      stockIn.setOpen(true)
+    } else if (action === 'salida') {
+      stockOut.setOpen(true)
+    }
+  }, [searchParams, stockIn, stockOut])
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["stock"],
@@ -90,25 +97,9 @@ export default function StockPage() {
   // Filtrado local con useMemo para optimización
   const filteredProducts = useMemo(() => {
     if (!data?.products) return []
-    return filterStockProducts(data.products, debouncedSearch, selectedCategory, data.categories)
-  }, [data?.products, debouncedSearch, selectedCategory, data?.categories])
+    return filterStockProducts(data.products, search, selectedCategory, data.categories)
+  }, [data?.products, search, selectedCategory, data?.categories])
 
-  const handleExport = async () => {
-    try {
-      const response = await fetch("/api/stock/export")
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `stock-${new Date().toISOString().split("T")[0]}.csv`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-    } catch (error) {
-      console.error("Export error:", error)
-    }
-  }
 
   if (error) {
     return (
@@ -126,10 +117,21 @@ export default function StockPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">Control de Stock</h1>
-          <Button onClick={handleExport} variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Exportar CSV
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => stockIn.setOpen(true)} className="bg-green-600 hover:bg-green-700">
+              <ArrowUpCircle className="h-4 w-4 mr-2" />
+              Entrada
+            </Button>
+            <Button onClick={() => stockOut.setOpen(true)} className="bg-red-600 hover:bg-red-700">
+              <ArrowDownCircle className="h-4 w-4 mr-2" />
+              Salida
+            </Button>
+            <ExportExcelButton 
+              data={filteredProducts}
+              type="stock"
+              filename={`stock-${new Date().toISOString().split("T")[0]}.xlsx`}
+            />
+          </div>
         </div>
 
         {/* Filters */}
@@ -262,6 +264,16 @@ export default function StockPage() {
           </CardContent>
         </Card>
       </div>
+
+      <StockInModal 
+        open={stockIn.open} 
+        onOpenChange={stockIn.setOpen} 
+      />
+      
+      <StockOutModal 
+        open={stockOut.open} 
+        onOpenChange={stockOut.setOpen} 
+      />
     </MainLayout>
   )
 }

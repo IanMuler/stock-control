@@ -7,8 +7,7 @@ import { useSession, signOut } from "next-auth/react"
 import {
   LayoutDashboard,
   Package,
-  ArrowUpCircle,
-  ArrowDownCircle,
+  ArrowUpDown,
   BarChart3,
   Settings,
   Users,
@@ -25,9 +24,7 @@ const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Productos", href: "/products", icon: Package },
   { name: "Categorías", href: "/categorias", icon: FolderOpen },
-  { name: "Entrada", href: "/movements/in", icon: ArrowUpCircle },
-  { name: "Salida", href: "/movements/out", icon: ArrowDownCircle },
-  { name: "Stock", href: "/stock", icon: BarChart3 },
+  { name: "Stock", href: "/stock", icon: ArrowUpDown },
   { name: "Reportes", href: "/reports", icon: BarChart3 },
 ]
 

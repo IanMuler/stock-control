@@ -12,7 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { MainLayout } from "@/components/layout/main-layout"
-import { Plus, Edit, Trash2, AlertTriangle, Package } from "lucide-react"
+import { Plus, Edit, Trash2, AlertTriangle, Package, FolderOpen } from "lucide-react"
 import { toast } from "sonner"
 
 interface Category {
@@ -209,9 +209,12 @@ export default function CategoriasPage() {
                 Nueva Categoría
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Crear Nueva Categoría</DialogTitle>
+                <DialogTitle className="flex items-center gap-2">
+                  <FolderOpen className="h-5 w-5 text-blue-600" />
+                  Crear Nueva Categoría
+                </DialogTitle>
                 <DialogDescription>
                   Completa la información para crear una nueva categoría.
                 </DialogDescription>
@@ -343,9 +346,12 @@ export default function CategoriasPage() {
             if (!open) resetForm()
           }}
         >
-          <DialogContent>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Editar Categoría</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <Edit className="h-5 w-5 text-blue-600" />
+                Editar Categoría
+              </DialogTitle>
               <DialogDescription>
                 Modifica la información de la categoría.
               </DialogDescription>

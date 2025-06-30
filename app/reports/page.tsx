@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Download, AlertTriangle, BarChart3 } from "lucide-react"
+import { AlertTriangle, BarChart3 } from "lucide-react"
+import { ExportExcelButton } from "@/components/ui/export-excel-button"
 
 interface ReportData {
     products: Array<{
@@ -32,6 +33,14 @@ async function fetchReport(type: string, params: Record<string, string>): Promis
     return response.json()
 }
 
+async function fetchCategories(): Promise<Array<{ id: string; name: string }>> {
+    const response = await fetch("/api/categories")
+    if (!response.ok) {
+        throw new Error("Failed to fetch categories")
+    }
+    return response.json()
+}
+
 export default function ReportsPage() {
     const [reportType, setReportType] = useState<string>("stock")
     const [startDate, setStartDate] = useState<string>("")
@@ -44,28 +53,15 @@ export default function ReportsPage() {
         enabled: false, // No ejecutar automáticamente
     })
 
+    const { data: categories } = useQuery({
+        queryKey: ["categories"],
+        queryFn: fetchCategories,
+    })
+
     const handleGenerateReport = () => {
         refetch()
     }
 
-    const handleExport = async () => {
-        try {
-            const response = await fetch(
-                `/api/reports/export?type=${reportType}&startDate=${startDate}&endDate=${endDate}&category=${category}`
-            )
-            const blob = await response.blob()
-            const url = window.URL.createObjectURL(blob)
-            const a = document.createElement("a")
-            a.href = url
-            a.download = `reporte-${reportType}-${new Date().toISOString().split("T")[0]}.csv`
-            document.body.appendChild(a)
-            a.click()
-            window.URL.revokeObjectURL(url)
-            document.body.removeChild(a)
-        } catch (error) {
-            console.error("Export error:", error)
-        }
-    }
 
     return (
         <MainLayout>
@@ -73,10 +69,11 @@ export default function ReportsPage() {
                 <div className="flex items-center justify-between">
                     <h1 className="text-2xl font-bold text-gray-900">Reportes</h1>
                     {data && (
-                        <Button onClick={handleExport} variant="outline">
-                            <Download className="h-4 w-4 mr-2" />
-                            Exportar CSV
-                        </Button>
+                        <ExportExcelButton 
+                            data={data.products}
+                            type={reportType as any}
+                            filename={`reporte-${reportType}-${new Date().toISOString().split("T")[0]}.xlsx`}
+                        />
                     )}
                 </div>
 
@@ -131,7 +128,11 @@ export default function ReportsPage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">Todas las categorías</SelectItem>
-                                        {/* Aquí podrías cargar categorías dinámicamente si tienes un endpoint */}
+                                        {categories?.map((category) => (
+                                            <SelectItem key={category.id} value={category.id}>
+                                                {category.name}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
