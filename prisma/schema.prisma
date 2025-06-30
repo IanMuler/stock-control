@@ -74,7 +74,7 @@ model Category {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  products Product[]
+  products ProductCategory[]
 
   @@map("categories")
 }
@@ -87,16 +87,28 @@ model Product {
   unit        String  @default("unidad")
   minStock    Int     @default(0)
   currentStock Int    @default(0)
-  categoryId  String?
   isActive    Boolean @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  category  Category?  @relation(fields: [categoryId], references: [id])
-  movements Movement[]
-  alerts    Alert[]
+  categories ProductCategory[]
+  movements  Movement[]
+  alerts     Alert[]
 
   @@map("products")
+}
+
+model ProductCategory {
+  id         String   @id @default(cuid())
+  productId  String
+  categoryId String
+  createdAt  DateTime @default(now())
+
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, categoryId])
+  @@map("product_categories")
 }
 
 model Movement {

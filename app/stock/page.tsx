@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { MainLayout } from "@/components/layout/main-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -33,16 +33,40 @@ interface StockData {
   categories: Array<{ id: string; name: string }>
 }
 
-async function fetchStockData(search?: string, category?: string): Promise<StockData> {
-  const params = new URLSearchParams()
-  if (search) params.append("search", search)
-  if (category) params.append("category", category)
-
-  const response = await fetch(`/api/stock?${params.toString()}`)
+async function fetchAllStockData(): Promise<StockData> {
+  const response = await fetch("/api/stock")
   if (!response.ok) {
     throw new Error("Failed to fetch stock data")
   }
   return response.json()
+}
+
+function filterStockProducts(products: Product[], search: string, categoryId: string, categories: Array<{ id: string; name: string }> = []): Product[] {
+  return products.filter(product => {
+    // Filtro por búsqueda (código, nombre, descripción)
+    if (search) {
+      const searchLower = search.toLowerCase()
+      const matchesSearch = 
+        product.code.toLowerCase().includes(searchLower) ||
+        product.name.toLowerCase().includes(searchLower) ||
+        (product.description && product.description.toLowerCase().includes(searchLower))
+      
+      if (!matchesSearch) {
+        return false
+      }
+    }
+
+    // Filtro por categoría
+    if (categoryId && categoryId !== "all") {
+      // Buscar el nombre de la categoría por ID
+      const selectedCategory = categories.find(cat => cat.id === categoryId)
+      if (!selectedCategory || !product.category || product.category.name !== selectedCategory.name) {
+        return false
+      }
+    }
+
+    return true
+  })
 }
 
 export default function StockPage() {
@@ -51,17 +75,23 @@ export default function StockPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("")
 
   // Debounce search
-  useState(() => {
+  useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search)
     }, 300)
     return () => clearTimeout(timer)
-  })
+  }, [search])
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["stock", debouncedSearch, selectedCategory],
-    queryFn: () => fetchStockData(debouncedSearch, selectedCategory),
+    queryKey: ["stock"],
+    queryFn: fetchAllStockData,
   })
+
+  // Filtrado local con useMemo para optimización
+  const filteredProducts = useMemo(() => {
+    if (!data?.products) return []
+    return filterStockProducts(data.products, debouncedSearch, selectedCategory, data.categories)
+  }, [data?.products, debouncedSearch, selectedCategory, data?.categories])
 
   const handleExport = async () => {
     try {
@@ -166,15 +196,17 @@ export default function StockPage() {
                       <TableHead>Categoría</TableHead>
                       <TableHead className="text-right">Stock Actual</TableHead>
                       <TableHead className="text-right">Stock Mínimo</TableHead>
+                      <TableHead className="text-right">Mínimo a Pedir</TableHead>
                       <TableHead>Unidad</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead className="text-right">Movimientos</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {data?.products.map((product) => {
+                    {filteredProducts.map((product) => {
                       const isLowStock = product.currentStock <= product.minStock
                       const isOutOfStock = product.currentStock === 0
+                      const minimoAPedir = Math.max(0, product.minStock - product.currentStock)
 
                       return (
                         <TableRow key={product.id}>
@@ -194,6 +226,13 @@ export default function StockPage() {
                             </span>
                           </TableCell>
                           <TableCell className="text-right text-gray-500">{product.minStock}</TableCell>
+                          <TableCell className="text-right font-medium">
+                            {minimoAPedir > 0 ? (
+                              <span className="text-red-600 font-semibold">{minimoAPedir}</span>
+                            ) : (
+                              <span className="text-green-600">0</span>
+                            )}
+                          </TableCell>
                           <TableCell className="text-sm text-gray-500">{product.unit}</TableCell>
                           <TableCell>
                             {isOutOfStock ? (
@@ -215,7 +254,7 @@ export default function StockPage() {
                   </TableBody>
                 </Table>
 
-                {data?.products.length === 0 && (
+                {filteredProducts.length === 0 && (
                   <div className="text-center py-8 text-gray-500">No se encontraron productos</div>
                 )}
               </div>

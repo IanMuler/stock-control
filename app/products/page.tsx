@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { MainLayout } from "@/components/layout/main-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,7 +9,10 @@ import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, Package, Plus, AlertTriangle } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
+import { Search, Package, Plus, AlertTriangle, Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
 
 interface Product {
@@ -20,42 +23,79 @@ interface Product {
     unit: string
     minStock: number
     currentStock: number
-    categoryId?: string | null
     isActive: boolean
     createdAt: string
     updatedAt: string
-    category?: {
-        id: string
-        name: string
-    } | null
+    categories?: Array<{
+        category: {
+            id: string
+            name: string
+        }
+    }>
     _count: {
         movements: number
     }
 }
 
 
-async function fetchProductData(search?: string, category?: string): Promise<Product[]> {
-    const params = new URLSearchParams()
-    if (search) params.append("search", search)
-    if (category && category !== "all") params.append("categoryId", category)
-
-    const response = await fetch(`/api/products?${params.toString()}`)
+async function fetchAllProducts(): Promise<Product[]> {
+    const response = await fetch("/api/products?includeInactive=true")
     if (!response.ok) {
         throw new Error("Failed to fetch product data")
     }
     return response.json()
 }
 
-export async function deleteProduct(id: string) {
-    const res = await fetch(`/api/products/${id}`, {
-        method: "DELETE",
+async function fetchCategories(): Promise<Array<{ id: string; name: string }>> {
+    const response = await fetch("/api/categories")
+    if (!response.ok) {
+        throw new Error("Failed to fetch categories")
+    }
+    return response.json()
+}
+
+function filterProducts(products: Product[], search: string, categoryId: string, includeInactive: boolean): Product[] {
+    return products.filter(product => {
+        // Filtro por estado activo/inactivo
+        if (!includeInactive && !product.isActive) {
+            return false
+        }
+
+        // Filtro por búsqueda (código, nombre, descripción)
+        if (search) {
+            const searchLower = search.toLowerCase()
+            const matchesSearch = 
+                product.code.toLowerCase().includes(searchLower) ||
+                product.name.toLowerCase().includes(searchLower) ||
+                (product.description && product.description.toLowerCase().includes(searchLower))
+            
+            if (!matchesSearch) {
+                return false
+            }
+        }
+
+        // Filtro por categoría
+        if (categoryId && categoryId !== "all") {
+            const hasCategory = product.categories?.some(cat => cat.category.id === categoryId)
+            if (!hasCategory) {
+                return false
+            }
+        }
+
+        return true
+    })
+}
+
+export async function toggleProductStatus(id: string, isActive: boolean) {
+    const res = await fetch(`/api/products`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ id, isActive }),
     });
 
     if (!res.ok) {
         const { error } = await res.json();
-        throw new Error(error || "No se pudo eliminar el producto");
+        throw new Error(error || "No se pudo cambiar el estado del producto");
     }
     return res.json();
 }
@@ -63,12 +103,13 @@ export async function deleteProduct(id: string) {
 export default function ProductsPage() {
     const [search, setSearch] = useState("")
     const [selectedCategory, setSelectedCategory] = useState<string>("all")
+    const [includeInactive, setIncludeInactive] = useState(false)
     const [debouncedSearch, setDebouncedSearch] = useState("")
 
     const queryClient = useQueryClient();
 
     const deleteMutation = useMutation({
-        mutationFn: deleteProduct,
+        mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) => toggleProductStatus(id, isActive),
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ["products"] }),
     });
 
@@ -80,10 +121,21 @@ export default function ProductsPage() {
         return () => clearTimeout(timer)
     }, [search])
 
-    const { data, isLoading, error } = useQuery({
-        queryKey: ["products", debouncedSearch, selectedCategory],
-        queryFn: () => fetchProductData(debouncedSearch, selectedCategory),
+    const { data: allProducts, isLoading, error } = useQuery({
+        queryKey: ["products"],
+        queryFn: fetchAllProducts,
     })
+
+    const { data: categories } = useQuery({
+        queryKey: ["categories"],
+        queryFn: fetchCategories,
+    })
+
+    // Filtrado local con useMemo para optimización
+    const filteredProducts = useMemo(() => {
+        if (!allProducts) return []
+        return filterProducts(allProducts, debouncedSearch, selectedCategory, includeInactive)
+    }, [allProducts, debouncedSearch, selectedCategory, includeInactive])
 
     if (error) {
         return (
@@ -135,13 +187,21 @@ export default function ProductsPage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">Todas las categorías</SelectItem>
-                                        {data && data.length > 0 && data.map((category) => (
+                                        {categories?.map((category) => (
                                             <SelectItem key={category.id} value={category.id}>
                                                 {category.name}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="includeInactive"
+                                    checked={includeInactive}
+                                    onCheckedChange={setIncludeInactive}
+                                />
+                                <Label htmlFor="includeInactive">Incluir productos inactivos</Label>
                             </div>
                         </div>
                     </CardContent>
@@ -170,7 +230,8 @@ export default function ProductsPage() {
                                         <TableRow>
                                             <TableHead>Código</TableHead>
                                             <TableHead>Nombre</TableHead>
-                                            <TableHead>Categoría</TableHead>
+                                            <TableHead>Categorías</TableHead>
+                                            <TableHead>Estado</TableHead>
                                             <TableHead className="text-right">Stock Actual</TableHead>
                                             <TableHead className="text-right">Stock Mínimo</TableHead>
                                             <TableHead>Unidad</TableHead>
@@ -178,8 +239,8 @@ export default function ProductsPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {data && data.length > 0 &&
-                                            data.map((product) => {
+                                        {filteredProducts && filteredProducts.length > 0 &&
+                                            filteredProducts.map((product) => {
                                                 const isLowStock = product.currentStock <= product.minStock
                                                 const isOutOfStock = product.currentStock === 0
 
@@ -194,7 +255,24 @@ export default function ProductsPage() {
                                                                 )}
                                                             </div>
                                                         </TableCell>
-                                                        <TableCell>{product.category?.name || "-"}</TableCell>
+                                                        <TableCell>
+                                                            {product.categories && product.categories.length > 0 ? (
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {product.categories.map((cat) => (
+                                                                        <Badge key={cat.category.id} variant="secondary" className="text-xs">
+                                                                            {cat.category.name}
+                                                                        </Badge>
+                                                                    ))}
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-gray-400">Sin categoría</span>
+                                                            )}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Badge variant={product.isActive ? "default" : "secondary"}>
+                                                                {product.isActive ? "Activo" : "Inactivo"}
+                                                            </Badge>
+                                                        </TableCell>
                                                         <TableCell className="text-right font-medium">
                                                             <span className={isOutOfStock ? "text-red-600" : isLowStock ? "text-orange-600" : ""}>
                                                                 {product.currentStock}
@@ -207,12 +285,22 @@ export default function ProductsPage() {
                                                                 <Link href={`/products/${product.id}/edit`}>Editar</Link>
                                                             </Button>
                                                             <Button
-                                                                variant="destructive"
+                                                                variant={product.isActive ? "destructive" : "default"}
                                                                 size="sm"
                                                                 className="ml-2"
-                                                                onClick={() => deleteMutation.mutate(product.id)}
+                                                                onClick={() => deleteMutation.mutate({ id: product.id, isActive: !product.isActive })}
                                                             >
-                                                                Eliminar
+                                                                {product.isActive ? (
+                                                                    <>
+                                                                        <EyeOff className="h-4 w-4 mr-1" />
+                                                                        Desactivar
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <Eye className="h-4 w-4 mr-1" />
+                                                                        Activar
+                                                                    </>
+                                                                )}
                                                             </Button>
                                                         </TableCell>
                                                     </TableRow>
@@ -221,7 +309,7 @@ export default function ProductsPage() {
                                     </TableBody>
                                 </Table>
 
-                                {(!data || data.length === 0) && (
+                                {(!filteredProducts || filteredProducts.length === 0) && (
                                     <div className="text-center py-8 text-gray-500">No se encontraron productos</div>
                                 )}
                             </div>

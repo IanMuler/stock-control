@@ -31,14 +31,22 @@ export async function GET(request: NextRequest) {
     }
 
     if (categoryId) {
-      where.categoryId = categoryId;
+      where.categories = {
+        some: {
+          categoryId: categoryId,
+        },
+      };
     }
 
     const products = await prisma.product.findMany({
       where,
       include: {
-        category: {
-          select: { id: true, name: true },
+        categories: {
+          include: {
+            category: {
+              select: { id: true, name: true },
+            },
+          },
         },
         _count: {
           select: { movements: true },
@@ -66,7 +74,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { code, name, description, unit, minStock, categoryId } = body;
+    const { code, name, description, unit, minStock, categoryIds } = body;
 
     if (!code || !name) {
       return NextResponse.json(
@@ -94,11 +102,19 @@ export async function POST(request: NextRequest) {
         unit: unit || "unidad",
         minStock: minStock || 0,
         currentStock: 0,
-        categoryId: categoryId || null,
+        categories: {
+          create: categoryIds ? categoryIds.map((categoryId: string) => ({
+            categoryId,
+          })) : [],
+        },
       },
       include: {
-        category: {
-          select: { id: true, name: true },
+        categories: {
+          include: {
+            category: {
+              select: { id: true, name: true },
+            },
+          },
         },
       },
     });
@@ -122,7 +138,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { id, code, name, description, unit, minStock, categoryId } = body;
+    const { id, code, name, description, unit, minStock, categoryIds } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -152,21 +168,37 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const product = await prisma.product.update({
-      where: { id },
-      data: {
-        code,
-        name,
-        description: description || "",
-        unit: unit || "unidad",
-        minStock: minStock || 0,
-        categoryId: categoryId || null,
-      },
-      include: {
-        category: {
-          select: { id: true, name: true },
+    const product = await prisma.$transaction(async (tx) => {
+      // Eliminar las categorías existentes
+      await tx.productCategory.deleteMany({
+        where: { productId: id },
+      });
+
+      // Actualizar el producto y crear las nuevas relaciones de categorías
+      return tx.product.update({
+        where: { id },
+        data: {
+          code,
+          name,
+          description: description || "",
+          unit: unit || "unidad",
+          minStock: minStock || 0,
+          categories: {
+            create: categoryIds ? categoryIds.map((categoryId: string) => ({
+              categoryId,
+            })) : [],
+          },
         },
-      },
+        include: {
+          categories: {
+            include: {
+              category: {
+                select: { id: true, name: true },
+              },
+            },
+          },
+        },
+      });
     });
 
     return NextResponse.json(product);
@@ -179,7 +211,7 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-export async function DELETE(request: NextRequest) {
+export async function PATCH(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
@@ -187,7 +219,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { id } = body;
+    const { id, isActive } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -196,14 +228,34 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await prisma.product.update({
+    if (typeof isActive !== 'boolean') {
+      return NextResponse.json(
+        { error: "isActive must be a boolean value" },
+        { status: 400 }
+      );
+    }
+
+    const product = await prisma.product.update({
       where: { id },
-      data: { isActive: false },
+      data: { isActive },
+      include: {
+        categories: {
+          include: {
+            category: {
+              select: { id: true, name: true },
+            },
+          },
+        },
+      },
     });
 
-    return NextResponse.json({ message: "Product deactivated successfully" });
+    const action = isActive ? "activated" : "deactivated";
+    return NextResponse.json({ 
+      message: `Product ${action} successfully`,
+      product 
+    });
   } catch (error) {
-    console.error("Product deactivation error:", error);
+    console.error("Product status update error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

@@ -9,8 +9,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
-import { Package } from "lucide-react"
+import { Package, X } from "lucide-react"
 
 interface Category {
     id: string
@@ -23,7 +25,7 @@ interface ProductFormData {
     description: string
     unit: string
     minStock: number
-    categoryId: string
+    categoryIds: string[]
 }
 
 async function fetchCategories(): Promise<Category[]> {
@@ -52,7 +54,7 @@ export default function NewProductPage() {
         description: "",
         unit: "unidad",
         minStock: 0,
-        categoryId: "",
+        categoryIds: [],
     })
 
     const router = useRouter()
@@ -156,22 +158,62 @@ export default function NewProductPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="category">Categoría</Label>
-                                <Select
-                                    value={formData.categoryId}
-                                    onValueChange={(value) => setFormData((prev) => ({ ...prev, categoryId: value }))}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Seleccionar categoría" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {categories.map((category) => (
-                                            <SelectItem key={category.id} value={category.id}>
-                                                {category.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <Label>Categorías</Label>
+                                <div className="border rounded-md p-3 space-y-2">
+                                    {categories.length === 0 ? (
+                                        <p className="text-sm text-gray-500">No hay categorías disponibles</p>
+                                    ) : (
+                                        categories.map((category) => (
+                                            <div key={category.id} className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id={`category-${category.id}`}
+                                                    checked={formData.categoryIds.includes(category.id)}
+                                                    onCheckedChange={(checked) => {
+                                                        if (checked) {
+                                                            setFormData((prev) => ({
+                                                                ...prev,
+                                                                categoryIds: [...prev.categoryIds, category.id]
+                                                            }))
+                                                        } else {
+                                                            setFormData((prev) => ({
+                                                                ...prev,
+                                                                categoryIds: prev.categoryIds.filter(id => id !== category.id)
+                                                            }))
+                                                        }
+                                                    }}
+                                                />
+                                                <Label
+                                                    htmlFor={`category-${category.id}`}
+                                                    className="text-sm font-normal cursor-pointer"
+                                                >
+                                                    {category.name}
+                                                </Label>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                                {formData.categoryIds.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-2">
+                                        {formData.categoryIds.map((categoryId) => {
+                                            const category = categories.find(c => c.id === categoryId)
+                                            return category ? (
+                                                <Badge key={categoryId} variant="secondary" className="text-xs">
+                                                    {category.name}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setFormData((prev) => ({
+                                                            ...prev,
+                                                            categoryIds: prev.categoryIds.filter(id => id !== categoryId)
+                                                        }))}
+                                                        className="ml-1 text-gray-500 hover:text-gray-700"
+                                                    >
+                                                        <X className="h-3 w-3" />
+                                                    </button>
+                                                </Badge>
+                                            ) : null
+                                        })}
+                                    </div>
+                                )}
                             </div>
                             <div className="flex justify-end space-x-2">
                                 <Button type="button" variant="outline" onClick={() => router.back()}>

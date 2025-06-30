@@ -15,6 +15,7 @@ import {
   LogOut,
   Menu,
   X,
+  FolderOpen,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -23,6 +24,7 @@ import { cn } from "@/lib/utils"
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Productos", href: "/products", icon: Package },
+  { name: "Categorías", href: "/categorias", icon: FolderOpen },
   { name: "Entrada", href: "/movements/in", icon: ArrowUpCircle },
   { name: "Salida", href: "/movements/out", icon: ArrowDownCircle },
   { name: "Stock", href: "/stock", icon: BarChart3 },
