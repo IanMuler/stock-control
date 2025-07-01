@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, Suspense } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useSearchParams } from "next/navigation"
 import { MainLayout } from "@/components/layout/main-layout"
@@ -72,7 +72,7 @@ function filterStockProducts(products: Product[], search: string, categoryId: st
   })
 }
 
-export default function StockPage() {
+function StockPageContent() {
   const [search, setSearch] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("") // Updated default value
   
@@ -275,5 +275,13 @@ export default function StockPage() {
         onOpenChange={stockOut.setOpen} 
       />
     </MainLayout>
+  )
+}
+
+export default function StockPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <StockPageContent />
+    </Suspense>
   )
 }

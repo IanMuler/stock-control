@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, Suspense } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useSearchParams } from "next/navigation"
 import { MainLayout } from "@/components/layout/main-layout"
@@ -126,7 +126,7 @@ async function createProduct(data: ProductFormData) {
     return response.json()
 }
 
-export default function ProductsPage() {
+function ProductsPageContent() {
     const [search, setSearch] = useState("")
     const [selectedCategory, setSelectedCategory] = useState<string>("all")
     const [includeInactive, setIncludeInactive] = useState(false)
@@ -596,5 +596,13 @@ export default function ProductsPage() {
                 product={editingProduct}
             />
         </MainLayout >
+    )
+}
+
+export default function ProductsPage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <ProductsPageContent />
+        </Suspense>
     )
 }
