@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get("endDate");
     const category = searchParams.get("category");
     const movementType = searchParams.get("movementType");
+    const product = searchParams.get("product");
 
     if (!type) {
       return NextResponse.json(
@@ -39,6 +40,7 @@ export async function GET(request: NextRequest) {
                 },
               },
             }),
+            ...(product && product !== "all" && { id: product }),
           },
           select: {
             id: true,
@@ -83,6 +85,7 @@ export async function GET(request: NextRequest) {
                     },
                   },
                 }),
+              ...(product && product !== "all" && { productId: product }),
             },
             include: {
               product: {
@@ -129,6 +132,7 @@ export async function GET(request: NextRequest) {
                 },
               },
             }),
+            ...(product && product !== "all" && { id: product }),
           },
           select: {
             id: true,

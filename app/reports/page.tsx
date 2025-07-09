@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertTriangle, BarChart3 } from "lucide-react"
 import { ExportExcelButton } from "@/components/ui/export-excel-button"
 import { CategorySelector } from "@/components/ui/category-selector"
+import { ProductSelector } from "@/components/ui/product-selector"
 
 interface ReportData {
     products: Array<{
@@ -41,10 +42,11 @@ export default function ReportsPage() {
     const [endDate, setEndDate] = useState<string>("")
     const [category, setCategory] = useState<string>("all")
     const [movementType, setMovementType] = useState<string>("all")
+    const [selectedProduct, setSelectedProduct] = useState<string>("all")
 
     const { data, isLoading, error, refetch } = useQuery({
-        queryKey: ["report", reportType, startDate, endDate, category, movementType],
-        queryFn: () => fetchReport(reportType, { startDate, endDate, category, movementType }),
+        queryKey: ["report", reportType, startDate, endDate, category, movementType, selectedProduct],
+        queryFn: () => fetchReport(reportType, { startDate, endDate, category, movementType, product: selectedProduct }),
         enabled: false, // No ejecutar automáticamente
     })
 
@@ -135,6 +137,14 @@ export default function ReportsPage() {
                                     value={category}
                                     onValueChange={setCategory}
                                     placeholder="Todas las categorías"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="product">Producto</Label>
+                                <ProductSelector
+                                    value={selectedProduct}
+                                    onValueChange={setSelectedProduct}
+                                    placeholder="Todos los productos"
                                 />
                             </div>
 
