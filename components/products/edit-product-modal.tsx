@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
-import { Package, X } from "lucide-react"
+import { Package, X, Search } from "lucide-react"
 
 interface Category {
   id: string
@@ -74,6 +74,7 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
     minStock: 0,
     categoryIds: [],
   })
+  const [categorySearch, setCategorySearch] = useState("")
 
   const { toast } = useToast()
   const queryClient = useQueryClient()
@@ -128,6 +129,7 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
         minStock: 0,
         categoryIds: [],
       })
+      setCategorySearch("")
     }
   }, [open])
 
@@ -213,38 +215,56 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
             
             <div className="space-y-2">
               <Label>Categorías</Label>
-              <div className="border rounded-md p-3 space-y-2 max-h-32 overflow-y-auto">
-                {categories.length === 0 ? (
-                  <p className="text-sm text-gray-500">No hay categorías disponibles</p>
-                ) : (
-                  categories.map((category) => (
-                    <div key={category.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`edit-category-${category.id}`}
-                        checked={formData.categoryIds.includes(category.id)}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setFormData((prev) => ({
-                              ...prev,
-                              categoryIds: [...prev.categoryIds, category.id]
-                            }))
-                          } else {
-                            setFormData((prev) => ({
-                              ...prev,
-                              categoryIds: prev.categoryIds.filter(id => id !== category.id)
-                            }))
-                          }
-                        }}
-                      />
-                      <Label
-                        htmlFor={`edit-category-${category.id}`}
-                        className="text-sm font-normal cursor-pointer"
-                      >
-                        {category.name}
-                      </Label>
-                    </div>
-                  ))
-                )}
+              <div className="space-y-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Buscar categorías..."
+                    value={categorySearch}
+                    onChange={(e) => setCategorySearch(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <div className="border rounded-md p-3 space-y-2 max-h-32 overflow-y-auto">
+                  {categories.length === 0 ? (
+                    <p className="text-sm text-gray-500">No hay categorías disponibles</p>
+                  ) : (
+                    categories.filter(category => 
+                      category.name.toLowerCase().includes(categorySearch.toLowerCase())
+                    ).map((category) => (
+                      <div key={category.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`edit-category-${category.id}`}
+                          checked={formData.categoryIds.includes(category.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setFormData((prev) => ({
+                                ...prev,
+                                categoryIds: [...prev.categoryIds, category.id]
+                              }))
+                            } else {
+                              setFormData((prev) => ({
+                                ...prev,
+                                categoryIds: prev.categoryIds.filter(id => id !== category.id)
+                              }))
+                            }
+                          }}
+                        />
+                        <Label
+                          htmlFor={`edit-category-${category.id}`}
+                          className="text-sm font-normal cursor-pointer"
+                        >
+                          {category.name}
+                        </Label>
+                      </div>
+                    ))
+                  )}
+                  {categories.length > 0 && categories.filter(category => 
+                    category.name.toLowerCase().includes(categorySearch.toLowerCase())
+                  ).length === 0 && (
+                    <p className="text-sm text-gray-500">No se encontraron categorías</p>
+                  )}
+                </div>
               </div>
               {formData.categoryIds.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-2">
