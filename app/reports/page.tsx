@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertTriangle, BarChart3 } from "lucide-react"
 import { ExportExcelButton } from "@/components/ui/export-excel-button"
+import { CategorySelector } from "@/components/ui/category-selector"
 
 interface ReportData {
     products: Array<{
@@ -33,13 +34,6 @@ async function fetchReport(type: string, params: Record<string, string>): Promis
     return response.json()
 }
 
-async function fetchCategories(): Promise<Array<{ id: string; name: string }>> {
-    const response = await fetch("/api/categories")
-    if (!response.ok) {
-        throw new Error("Failed to fetch categories")
-    }
-    return response.json()
-}
 
 export default function ReportsPage() {
     const [reportType, setReportType] = useState<string>("stock")
@@ -53,10 +47,6 @@ export default function ReportsPage() {
         enabled: false, // No ejecutar automáticamente
     })
 
-    const { data: categories } = useQuery({
-        queryKey: ["categories"],
-        queryFn: fetchCategories,
-    })
 
     const handleGenerateReport = () => {
         refetch()
@@ -125,19 +115,11 @@ export default function ReportsPage() {
                             )}
                             <div className="space-y-2">
                                 <Label htmlFor="category">Categoría</Label>
-                                <Select value={category} onValueChange={setCategory}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Todas las categorías" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">Todas las categorías</SelectItem>
-                                        {categories?.map((category) => (
-                                            <SelectItem key={category.id} value={category.id}>
-                                                {category.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <CategorySelector
+                                    value={category}
+                                    onValueChange={setCategory}
+                                    placeholder="Todas las categorías"
+                                />
                             </div>
                             <Button 
                                 onClick={handleGenerateReport} 

@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, AlertTriangle, Package, ArrowUpCircle, ArrowDownCircle } from "lucide-react"
 import { StockInModal, StockOutModal, useStockMovements } from "@/components/stock/stock-movements"
 import { ExportExcelButton } from "@/components/ui/export-excel-button"
+import { CategorySelector } from "@/components/ui/category-selector"
 
 interface Product {
   id: string
@@ -157,19 +158,11 @@ function StockPageContent() {
                 </div>
               </div>
               <div className="w-full md:w-48">
-                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todas las categorías" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas las categorías</SelectItem> {/* Updated value prop */}
-                    {data?.categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <CategorySelector
+                  value={selectedCategory}
+                  onValueChange={setSelectedCategory}
+                  placeholder="Todas las categorías"
+                />
               </div>
             </div>
           </CardContent>

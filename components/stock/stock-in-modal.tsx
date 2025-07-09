@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Search, ArrowUpCircle } from "lucide-react"
+import { CategorySelector } from "@/components/ui/category-selector"
 
 interface Product {
   id: string
@@ -58,6 +59,7 @@ export function StockInModal({ open, onOpenChange }: StockInModalProps) {
     date: new Date().toISOString().split("T")[0],
   })
   const [productSearch, setProductSearch] = useState("")
+  const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [selectOpen, setSelectOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
@@ -87,6 +89,7 @@ export function StockInModal({ open, onOpenChange }: StockInModalProps) {
         date: new Date().toISOString().split("T")[0],
       })
       setProductSearch("")
+      setSelectedCategory("all")
       setSelectOpen(false)
     },
     onError: (error: Error) => {
@@ -134,6 +137,16 @@ export function StockInModal({ open, onOpenChange }: StockInModalProps) {
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="category">Filtrar por categoría</Label>
+            <CategorySelector
+              value={selectedCategory}
+              onValueChange={setSelectedCategory}
+              placeholder="Todas las categorías"
+              className="w-full"
+            />
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="product-search">Producto</Label>
             <div className="space-y-2 relative">
