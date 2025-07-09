@@ -53,15 +53,26 @@ export function exportToExcel({ data, columns, sheetName, filename }: ExcelExpor
 function getNestedValue(obj: any, path: string): any {
   // Casos especiales para categorías
   if (path === 'categories') {
-    // Manejar el array de categorías
+    // Manejar el array de categorías (formato del endpoint /api/reports/export)
     if (obj.categories && Array.isArray(obj.categories) && obj.categories.length > 0) {
-      // Retornar todas las categorías separadas por comas
-      return obj.categories.map((cat: any) => cat.category?.name || "Sin categoría").join(", ");
+      // Filtrar categorías válidas y mapear solo las que tienen nombre
+      const validCategories = obj.categories
+        .filter((cat: any) => cat.category?.name)
+        .map((cat: any) => cat.category.name);
+      
+      return validCategories.length > 0 ? validCategories.join(", ") : "Sin categoría";
     }
+    
+    // Manejar categoría como string (formato del endpoint /api/reports)
+    if (obj.category && typeof obj.category === 'string') {
+      return obj.category !== '-' ? obj.category : "Sin categoría";
+    }
+    
     // Fallback para formato antiguo (category object)
     if (obj.category && obj.category.name) {
       return obj.category.name;
     }
+    
     return "Sin categoría";
   }
   
@@ -69,7 +80,8 @@ function getNestedValue(obj: any, path: string): any {
   if (path === 'category.name') {
     // Primero intentar el formato nuevo (categories array)
     if (obj.categories && Array.isArray(obj.categories) && obj.categories.length > 0) {
-      return obj.categories[0]?.category?.name || "Sin categoría";
+      const firstValidCategory = obj.categories.find((cat: any) => cat.category?.name);
+      return firstValidCategory?.category?.name || "Sin categoría";
     }
     // Luego el formato antiguo (category object)
     if (obj.category && obj.category.name) {

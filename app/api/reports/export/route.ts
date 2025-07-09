@@ -109,12 +109,10 @@ export async function GET(request: NextRequest) {
           );
         break;
       case "lowStock":
-        data = await prisma.product.findMany({
+        // Usar un enfoque más simple: obtener todos los productos y filtrar después
+        const allProducts = await prisma.product.findMany({
           where: {
             isActive: true,
-            currentStock: {
-              lte: prisma.product.fields.minStock,
-            },
             ...(category && category !== "all" && {
               categories: {
                 some: {
@@ -137,6 +135,9 @@ export async function GET(request: NextRequest) {
             },
           },
         });
+        
+        // Filtrar productos con stock bajo
+        data = allProducts.filter(product => product.currentStock <= product.minStock);
         break;
       default:
         return NextResponse.json(
