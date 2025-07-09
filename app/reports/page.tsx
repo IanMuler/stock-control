@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Checkbox } from "@/components/ui/checkbox"
 import { AlertTriangle, BarChart3 } from "lucide-react"
 import { ExportExcelButton } from "@/components/ui/export-excel-button"
 import { CategorySelector } from "@/components/ui/category-selector"
@@ -18,11 +19,16 @@ import { ProductSelector } from "@/components/ui/product-selector"
 interface ReportData {
     products: Array<{
         id: string
+        productId?: string
         code: string
         name: string
         currentStock: number
         minStock: number
         category: string
+        type?: "IN" | "OUT" | "NEUTRAL"
+        quantity?: number
+        date?: string
+        balance?: number
     }>
 }
 
@@ -43,10 +49,11 @@ export default function ReportsPage() {
     const [category, setCategory] = useState<string>("all")
     const [movementType, setMovementType] = useState<string>("all")
     const [selectedProduct, setSelectedProduct] = useState<string>("all")
+    const [groupByProduct, setGroupByProduct] = useState<boolean>(false)
 
     const { data, isLoading, error, refetch } = useQuery({
-        queryKey: ["report", reportType, startDate, endDate, category, movementType, selectedProduct],
-        queryFn: () => fetchReport(reportType, { startDate, endDate, category, movementType, product: selectedProduct }),
+        queryKey: ["report", reportType, startDate, endDate, category, movementType, selectedProduct, groupByProduct],
+        queryFn: () => fetchReport(reportType, { startDate, endDate, category, movementType, product: selectedProduct, groupByProduct: groupByProduct.toString() }),
         enabled: false, // No ejecutar automáticamente
     })
 
@@ -147,6 +154,18 @@ export default function ReportsPage() {
                                     placeholder="Todos los productos"
                                 />
                             </div>
+                            {reportType === "movements" && (
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox
+                                        id="groupByProduct"
+                                        checked={groupByProduct}
+                                        onCheckedChange={(checked) => setGroupByProduct(checked === true)}
+                                    />
+                                    <Label htmlFor="groupByProduct" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                        Agrupar por producto
+                                    </Label>
+                                </div>
+                            )}
 
                             <Button
                                 onClick={handleGenerateReport}
@@ -175,16 +194,43 @@ export default function ReportsPage() {
                                             <TableHead>Código</TableHead>
                                             <TableHead>Nombre</TableHead>
                                             <TableHead>Categoría</TableHead>
+                                            {reportType === "movements" && (
+                                                <>
+                                                    <TableHead>Tipo de Movimiento</TableHead>
+                                                    <TableHead className="text-right">Cantidad</TableHead>
+                                                    <TableHead>Fecha y Hora</TableHead>
+                                                    <TableHead className="text-right">Saldo</TableHead>
+                                                </>
+                                            )}
                                             <TableHead className="text-right">Stock Actual</TableHead>
                                             <TableHead className="text-right">Stock Mínimo</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {data.products.map((product) => (
-                                            <TableRow key={product.id}>
+                                        {data.products.map((product, index) => (
+                                            <TableRow key={product.id || index}>
                                                 <TableCell>{product.code}</TableCell>
                                                 <TableCell>{product.name}</TableCell>
                                                 <TableCell>{product.category}</TableCell>
+                                                {reportType === "movements" && (
+                                                    <>
+                                                        <TableCell>
+                                                            {product.type === "IN" ? "Entrada" : product.type === "OUT" ? "Salida" : product.type === "NEUTRAL" ? "Sin cambio" : "-"}
+                                                        </TableCell>
+                                                        <TableCell className="text-right">{product.quantity || "-"}</TableCell>
+                                                        <TableCell>
+                                                            {product.date ? new Date(product.date).toLocaleString('es-AR', {
+                                                                year: 'numeric',
+                                                                month: '2-digit',
+                                                                day: '2-digit',
+                                                                hour: '2-digit',
+                                                                minute: '2-digit',
+                                                                hour12: false
+                                                            }) : "-"}
+                                                        </TableCell>
+                                                        <TableCell className="text-right">{product.balance || 0}</TableCell>
+                                                    </>
+                                                )}
                                                 <TableCell className="text-right">{product.currentStock}</TableCell>
                                                 <TableCell className="text-right">{product.minStock}</TableCell>
                                             </TableRow>

@@ -80,7 +80,23 @@ function getNestedValue(obj: any, path: string): any {
   if (path === 'type') {
     if (obj.type === 'IN') return 'Entrada';
     if (obj.type === 'OUT') return 'Salida';
+    if (obj.type === 'NEUTRAL') return 'Sin cambio';
     return obj.type || '-';
+  }
+  
+  // Casos especiales para fecha
+  if (path === 'date') {
+    if (obj.date) {
+      return new Date(obj.date).toLocaleString('es-AR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+    }
+    return '-';
   }
   
   // Casos especiales para compatibilidad con formato antiguo
@@ -137,10 +153,13 @@ export const REPORT_CONFIGS = {
     columns: [
       { key: 'code', header: 'Código', width: 12 },
       { key: 'name', header: 'Nombre', width: 30 },
-      { key: 'type', header: 'Tipo', width: 12 },
+      { key: 'categories', header: 'Categoría', width: 20 },
+      { key: 'type', header: 'Tipo de Movimiento', width: 18 },
+      { key: 'quantity', header: 'Cantidad', width: 12 },
+      { key: 'date', header: 'Fecha y Hora', width: 20 },
+      { key: 'balance', header: 'Saldo', width: 12 },
       { key: 'currentStock', header: 'Stock Actual', width: 15 },
       { key: 'minStock', header: 'Stock Mínimo', width: 15 },
-      { key: 'categories', header: 'Categoría', width: 20 },
     ],
     sheetName: 'Movimientos'
   },

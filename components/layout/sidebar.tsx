@@ -37,7 +37,7 @@ export function Sidebar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const pathname = usePathname()
   const { data: session } = useSession()
-  const isAdmin = session?.user?.role === "ADMIN"
+  const isAdmin = (session?.user as any)?.role === "ADMIN"
 
   const allNavigation = [...navigation, ...(isAdmin ? adminNavigation : [])]
 
@@ -86,7 +86,7 @@ export function Sidebar() {
                   {session?.user?.name || session?.user?.email}
                 </p>
                 <p className="text-xs text-gray-500">
-                  {session?.user?.role === "ADMIN" ? "Administrador" : "Operador"}
+                  {(session?.user as any)?.role === "ADMIN" ? "Administrador" : "Operador"}
                 </p>
               </div>
             </div>
