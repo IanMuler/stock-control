@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "backup": "node scripts/backup-raw.js",
-    "seed": "node prisma/seed.js"
+    "seed": "node prisma/seed.js",
+  "vercel-build": "prisma generate && next build"
   },
   "dependencies": {
     "@auth/core": "latest",
