@@ -23,9 +23,12 @@ interface Product {
   unit: string
   currentStock: number
   minStock: number
-  category?: {
-    name: string
-  }
+  categories: Array<{
+    category: {
+      id: string
+      name: string
+    }
+  }>
   _count: {
     movements: number
   }
@@ -44,7 +47,7 @@ async function fetchAllStockData(): Promise<StockData> {
   return response.json()
 }
 
-function filterStockProducts(products: Product[], search: string, categoryId: string, categories: Array<{ id: string; name: string }> = []): Product[] {
+function filterStockProducts(products: Product[], search: string, categoryId: string): Product[] {
   return products.filter(product => {
     // Filtro por búsqueda (código, nombre, descripción)
     if (search) {
@@ -61,9 +64,9 @@ function filterStockProducts(products: Product[], search: string, categoryId: st
 
     // Filtro por categoría
     if (categoryId && categoryId !== "all") {
-      // Buscar el nombre de la categoría por ID
-      const selectedCategory = categories.find(cat => cat.id === categoryId)
-      if (!selectedCategory || !product.category || product.category.name !== selectedCategory.name) {
+      // Verificar si el producto tiene alguna categoría que coincida con el ID seleccionado
+      const hasMatchingCategory = product.categories.some(cat => cat.category.id === categoryId)
+      if (!hasMatchingCategory) {
         return false
       }
     }
@@ -74,7 +77,7 @@ function filterStockProducts(products: Product[], search: string, categoryId: st
 
 function StockPageContent() {
   const [search, setSearch] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState<string>("") // Updated default value
+  const [selectedCategory, setSelectedCategory] = useState<string>("all")
   
   const searchParams = useSearchParams()
   const { stockIn, stockOut } = useStockMovements()
@@ -97,8 +100,8 @@ function StockPageContent() {
   // Filtrado local con useMemo para optimización
   const filteredProducts = useMemo(() => {
     if (!data?.products) return []
-    return filterStockProducts(data.products, search, selectedCategory, data.categories)
-  }, [data?.products, search, selectedCategory, data?.categories])
+    return filterStockProducts(data.products, search, selectedCategory)
+  }, [data?.products, search, selectedCategory])
 
 
   if (error) {
@@ -221,7 +224,19 @@ function StockPageContent() {
                               )}
                             </div>
                           </TableCell>
-                          <TableCell>{product.category?.name || "-"}</TableCell>
+                          <TableCell>
+                            {product.categories && product.categories.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {product.categories.map((cat) => (
+                                  <Badge key={cat.category.id} variant="secondary" className="text-xs">
+                                    {cat.category.name}
+                                  </Badge>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </TableCell>
                           <TableCell className="text-right font-medium">
                             <span className={isOutOfStock ? "text-red-600" : isLowStock ? "text-orange-600" : ""}>
                               {product.currentStock}

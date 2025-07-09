@@ -31,6 +31,9 @@ pnpm start
 
 # Run linter
 pnpm lint
+
+# TypeScript type checking (without build)
+npx tsc --noEmit
 ```
 
 ### Database Commands
@@ -84,6 +87,18 @@ Required environment variables:
 - `DATABASE_URL`: PostgreSQL connection string
 - `NEXTAUTH_SECRET`: NextAuth secret key
 - `GOOGLE_CLIENT_ID` & `GOOGLE_CLIENT_SECRET`: OAuth credentials
+
+### Development Server Management
+- **IMPORTANT**: Before running `pnpm dev`, always check if the development server is already running in another instance/terminal
+- Use `ps aux | grep "next dev"` or `lsof -i :3000` to check if port 3000 is in use
+- If the server is already running on port 3000, DO NOT attempt to start another instance with `pnpm dev`
+- The development server typically runs on port 3000, but may use alternative ports (3001, 3002, etc.) if 3000 is occupied
+- Always ensure only one development server instance is running at a time
+
+### Type Checking
+- **IMPORTANT**: To verify TypeScript types without building, use `npx tsc --noEmit`
+- This command checks for type errors without generating output files
+- Use this instead of `pnpm build` when you only need to verify code correctness
 
 ### Code Conventions
 - Spanish language used for UI text and database content

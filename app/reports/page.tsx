@@ -62,6 +62,9 @@ export default function ReportsPage() {
         refetch()
     }
 
+    // Validar si se puede generar el reporte
+    const canGenerateReport = reportType !== "movements" || (startDate && endDate)
+
 
     return (
         <MainLayout>
@@ -136,7 +139,12 @@ export default function ReportsPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <Button onClick={handleGenerateReport}>Generar Reporte</Button>
+                            <Button 
+                                onClick={handleGenerateReport} 
+                                disabled={!canGenerateReport}
+                            >
+                                Generar Reporte
+                            </Button>
                         </div>
                     </CardContent>
                 </Card>
