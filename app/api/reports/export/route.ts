@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
               name: m.product.name,
               currentStock: m.product.currentStock,
               minStock: m.product.minStock,
-              category: m.product.categories?.[0]?.category?.name || "-",
+              categories: m.product.categories,
             }))
           );
         break;

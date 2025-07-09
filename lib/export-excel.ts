@@ -52,6 +52,20 @@ export function exportToExcel({ data, columns, sheetName, filename }: ExcelExpor
 // Función auxiliar para obtener valores anidados (ej: "categories.0.category.name")
 function getNestedValue(obj: any, path: string): any {
   // Casos especiales para categorías
+  if (path === 'categories') {
+    // Manejar el array de categorías
+    if (obj.categories && Array.isArray(obj.categories) && obj.categories.length > 0) {
+      // Retornar todas las categorías separadas por comas
+      return obj.categories.map((cat: any) => cat.category?.name || "Sin categoría").join(", ");
+    }
+    // Fallback para formato antiguo (category object)
+    if (obj.category && obj.category.name) {
+      return obj.category.name;
+    }
+    return "Sin categoría";
+  }
+  
+  // Casos especiales para compatibilidad con formato antiguo
   if (path === 'category.name') {
     // Primero intentar el formato nuevo (categories array)
     if (obj.categories && Array.isArray(obj.categories) && obj.categories.length > 0) {
@@ -96,7 +110,7 @@ export const REPORT_CONFIGS = {
       { key: 'name', header: 'Nombre', width: 30 },
       { key: 'currentStock', header: 'Stock Actual', width: 15 },
       { key: 'minStock', header: 'Stock Mínimo', width: 15 },
-      { key: 'category.name', header: 'Categoría', width: 20 },
+      { key: 'categories', header: 'Categoría', width: 20 },
     ],
     sheetName: 'Stock Actual'
   },
@@ -106,7 +120,7 @@ export const REPORT_CONFIGS = {
       { key: 'name', header: 'Nombre', width: 30 },
       { key: 'currentStock', header: 'Stock Actual', width: 15 },
       { key: 'minStock', header: 'Stock Mínimo', width: 15 },
-      { key: 'categories.0.category.name', header: 'Categoría', width: 20 },
+      { key: 'categories', header: 'Categoría', width: 20 },
     ],
     sheetName: 'Movimientos'
   },
@@ -116,7 +130,7 @@ export const REPORT_CONFIGS = {
       { key: 'name', header: 'Nombre', width: 30 },
       { key: 'currentStock', header: 'Stock Actual', width: 15 },
       { key: 'minStock', header: 'Stock Mínimo', width: 15 },
-      { key: 'categories.0.category.name', header: 'Categoría', width: 20 },
+      { key: 'categories', header: 'Categoría', width: 20 },
     ],
     sheetName: 'Stock Bajo'
   },
@@ -128,7 +142,7 @@ export const REPORT_CONFIGS = {
       { key: 'unit', header: 'Unidad', width: 12 },
       { key: 'currentStock', header: 'Stock Actual', width: 15 },
       { key: 'minStock', header: 'Stock Mínimo', width: 15 },
-      { key: 'categories.0.category.name', header: 'Categoría', width: 20 },
+      { key: 'categories', header: 'Categoría', width: 20 },
       { key: 'isActive', header: 'Estado', width: 12 },
     ],
     sheetName: 'Productos'

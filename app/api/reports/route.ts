@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
               name: m.product.name,
               currentStock: m.product.currentStock,
               minStock: m.product.minStock,
-              category: m.product.categories?.[0]?.category?.name || "-",
+              categories: m.product.categories, // Mantener estructura para procesamiento posterior
             }))
           );
         break;
@@ -156,7 +156,9 @@ export async function GET(request: NextRequest) {
         name: item.name,
         currentStock: item.currentStock,
         minStock: item.minStock,
-        category: item.categories?.[0]?.category?.name || "-",
+        category: item.categories && item.categories.length > 0 
+          ? item.categories.map((cat: any) => cat.category?.name).join(", ") 
+          : "-",
       })),
     };
 
