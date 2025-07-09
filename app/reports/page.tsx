@@ -40,10 +40,11 @@ export default function ReportsPage() {
     const [startDate, setStartDate] = useState<string>("")
     const [endDate, setEndDate] = useState<string>("")
     const [category, setCategory] = useState<string>("all")
+    const [movementType, setMovementType] = useState<string>("all")
 
     const { data, isLoading, error, refetch } = useQuery({
-        queryKey: ["report", reportType, startDate, endDate, category],
-        queryFn: () => fetchReport(reportType, { startDate, endDate, category }),
+        queryKey: ["report", reportType, startDate, endDate, category, movementType],
+        queryFn: () => fetchReport(reportType, { startDate, endDate, category, movementType }),
         enabled: false, // No ejecutar automáticamente
     })
 
@@ -62,7 +63,7 @@ export default function ReportsPage() {
                 <div className="flex items-center justify-between">
                     <h1 className="text-2xl font-bold text-gray-900">Reportes</h1>
                     {data && (
-                        <ExportExcelButton 
+                        <ExportExcelButton
                             data={data.products}
                             type={reportType as any}
                             filename={`reporte-${reportType}-${new Date().toISOString().split("T")[0]}.xlsx`}
@@ -91,6 +92,21 @@ export default function ReportsPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
+                            {reportType === "movements" && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="movementType">Tipo de Movimiento</Label>
+                                    <Select value={movementType} onValueChange={setMovementType}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Todos los movimientos" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">Todos los movimientos</SelectItem>
+                                            <SelectItem value="IN">Entrada</SelectItem>
+                                            <SelectItem value="OUT">Salida</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
                             {reportType === "movements" && (
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
@@ -121,8 +137,9 @@ export default function ReportsPage() {
                                     placeholder="Todas las categorías"
                                 />
                             </div>
-                            <Button 
-                                onClick={handleGenerateReport} 
+
+                            <Button
+                                onClick={handleGenerateReport}
                                 disabled={!canGenerateReport}
                             >
                                 Generar Reporte

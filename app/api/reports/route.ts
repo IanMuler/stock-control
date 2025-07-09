@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
     const category = searchParams.get("category");
+    const movementType = searchParams.get("movementType");
 
     if (!type) {
       return NextResponse.json(
@@ -69,6 +70,9 @@ export async function GET(request: NextRequest) {
                 gte: new Date(startDate),
                 lte: new Date(endDate),
               },
+              ...(movementType && movementType !== "all" && {
+                type: movementType as "IN" | "OUT",
+              }),
               ...(category &&
                 category !== "all" && {
                   product: {
@@ -101,7 +105,7 @@ export async function GET(request: NextRequest) {
             orderBy: { date: "desc" },
           })
           .then((movements) =>
-            movements.map((m) => ({
+            movements.map((m: any) => ({
               id: m.product.id,
               code: m.product.code,
               name: m.product.name,

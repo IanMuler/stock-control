@@ -76,6 +76,13 @@ function getNestedValue(obj: any, path: string): any {
     return "Sin categoría";
   }
   
+  // Casos especiales para tipo de movimiento
+  if (path === 'type') {
+    if (obj.type === 'IN') return 'Entrada';
+    if (obj.type === 'OUT') return 'Salida';
+    return obj.type || '-';
+  }
+  
   // Casos especiales para compatibilidad con formato antiguo
   if (path === 'category.name') {
     // Primero intentar el formato nuevo (categories array)
@@ -130,6 +137,7 @@ export const REPORT_CONFIGS = {
     columns: [
       { key: 'code', header: 'Código', width: 12 },
       { key: 'name', header: 'Nombre', width: 30 },
+      { key: 'type', header: 'Tipo', width: 12 },
       { key: 'currentStock', header: 'Stock Actual', width: 15 },
       { key: 'minStock', header: 'Stock Mínimo', width: 15 },
       { key: 'categories', header: 'Categoría', width: 20 },
