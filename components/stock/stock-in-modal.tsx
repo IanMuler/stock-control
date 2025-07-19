@@ -18,6 +18,12 @@ interface Product {
   name: string
   unit: string
   currentStock: number
+  categories?: Array<{
+    category: {
+      id: string
+      name: string
+    }
+  }>
 }
 
 interface MovementFormData {
@@ -32,8 +38,14 @@ interface StockInModalProps {
   onOpenChange: (open: boolean) => void
 }
 
-async function fetchProducts(): Promise<Product[]> {
-  const response = await fetch("/api/products")
+async function fetchProducts(categoryId?: string): Promise<Product[]> {
+  const params = new URLSearchParams()
+  if (categoryId && categoryId !== "all") {
+    params.append("categoryId", categoryId)
+  }
+  
+  const url = `/api/products${params.toString() ? `?${params.toString()}` : ""}`
+  const response = await fetch(url)
   if (!response.ok) throw new Error("Failed to fetch products")
   return response.json()
 }
@@ -67,8 +79,8 @@ export function StockInModal({ open, onOpenChange }: StockInModalProps) {
   const queryClient = useQueryClient()
 
   const { data: products = [] } = useQuery({
-    queryKey: ["products"],
-    queryFn: fetchProducts,
+    queryKey: ["products", selectedCategory],
+    queryFn: () => fetchProducts(selectedCategory),
   })
 
   const mutation = useMutation({
@@ -102,11 +114,18 @@ export function StockInModal({ open, onOpenChange }: StockInModalProps) {
   })
 
   const filteredProducts = useMemo(() => {
-    return products.filter(
-      (product) =>
-        product.code.toLowerCase().includes(productSearch.toLowerCase()) ||
-        product.name.toLowerCase().includes(productSearch.toLowerCase())
-    )
+    let filtered = products
+    
+    // Filtrar por búsqueda de texto
+    if (productSearch) {
+      filtered = filtered.filter(
+        (product) =>
+          product.code.toLowerCase().includes(productSearch.toLowerCase()) ||
+          product.name.toLowerCase().includes(productSearch.toLowerCase())
+      )
+    }
+    
+    return filtered
   }, [products, productSearch])
 
   const selectedProduct = products.find((p) => p.id === formData.productId)
@@ -200,7 +219,7 @@ export function StockInModal({ open, onOpenChange }: StockInModalProps) {
                   <SelectValue placeholder="Seleccionar producto" />
                 </SelectTrigger>
                 <SelectContent>
-                  {products.map((product) => (
+                  {filteredProducts.map((product) => (
                     <SelectItem key={product.id} value={product.id}>
                       {product.code} - {product.name}
                     </SelectItem>

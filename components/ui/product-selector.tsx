@@ -26,6 +26,7 @@ interface ProductSelectorProps {
   allLabel?: string
   disabled?: boolean
   className?: string
+  categoryId?: string
 }
 
 export function ProductSelector({
@@ -36,9 +37,10 @@ export function ProductSelector({
   allLabel = "Todos los productos",
   disabled = false,
   className,
+  categoryId,
 }: ProductSelectorProps) {
   const [open, setOpen] = useState(false)
-  const { data: products = [], isLoading } = useProducts()
+  const { data: products = [], isLoading } = useProducts(categoryId)
 
   const options = useMemo(() => {
     const productOptions = products.map((product: Product) => ({

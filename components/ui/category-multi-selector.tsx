@@ -1,9 +1,8 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { Search, X, Check } from "lucide-react"
+import { Search, X } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
@@ -24,7 +23,6 @@ interface CategoryMultiSelectorProps {
 export function CategoryMultiSelector({
   value = [],
   onValueChange,
-  placeholder = "Seleccionar categorías...",
   searchPlaceholder = "Buscar categorías...",
   disabled = false,
   className,
@@ -35,7 +33,7 @@ export function CategoryMultiSelector({
 
   const filteredCategories = useMemo(() => {
     if (!searchTerm) return categories
-    
+
     return categories.filter((category: Category) =>
       category.name.toLowerCase().includes(searchTerm.toLowerCase())
     )
@@ -51,13 +49,13 @@ export function CategoryMultiSelector({
     const newValue = value.includes(categoryId)
       ? value.filter(id => id !== categoryId)
       : [...value, categoryId]
-    
+
     onValueChange?.(newValue)
   }
 
   const handleRemoveCategory = (categoryId: string) => {
     if (disabled) return
-    
+
     const newValue = value.filter(id => id !== categoryId)
     onValueChange?.(newValue)
   }
@@ -116,18 +114,17 @@ export function CategoryMultiSelector({
       {/* Lista de categorías */}
       <div className="space-y-2">
         <Label className="text-sm font-medium">Categorías disponibles:</Label>
-        <ScrollArea className="rounded-md border p-2" style={{ maxHeight }}>
+        <ScrollArea className="rounded-md border p-2" style={{ height: maxHeight }}>
           {filteredCategories.length === 0 ? (
             <div className="text-center py-4 text-gray-500">
               {searchTerm ? "No se encontraron categorías" : "No hay categorías disponibles"}
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1">
               {filteredCategories.map((category: Category) => (
                 <div
                   key={category.id}
-                  className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded-sm cursor-pointer"
-                  onClick={() => handleToggleCategory(category.id)}
+                  className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded-sm"
                 >
                   <Checkbox
                     id={category.id}
@@ -138,6 +135,7 @@ export function CategoryMultiSelector({
                   <Label
                     htmlFor={category.id}
                     className="flex-1 cursor-pointer select-none"
+                    onClick={() => handleToggleCategory(category.id)}
                   >
                     {category.name}
                   </Label>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { MainLayout } from "@/components/layout/main-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -50,6 +50,13 @@ export default function ReportsPage() {
     const [movementType, setMovementType] = useState<string>("all")
     const [selectedProduct, setSelectedProduct] = useState<string>("all")
     const [groupByProduct, setGroupByProduct] = useState<boolean>(false)
+
+    // Efecto para reiniciar producto seleccionado cuando cambia la categoría
+    useEffect(() => {
+        if (selectedProduct !== "all") {
+            setSelectedProduct("all")
+        }
+    }, [category])
 
     const { data, isLoading, error, refetch } = useQuery({
         queryKey: ["report", reportType, startDate, endDate, category, movementType, selectedProduct, groupByProduct],
@@ -152,6 +159,7 @@ export default function ReportsPage() {
                                     value={selectedProduct}
                                     onValueChange={setSelectedProduct}
                                     placeholder="Todos los productos"
+                                    categoryId={category}
                                 />
                             </div>
                             {reportType === "movements" && (
