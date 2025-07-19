@@ -8,9 +8,8 @@ import { Toaster } from "@/components/ui/toaster"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "StockControl - Sistema de Inventario",
+  title: "TETELESTAI | Control de stock",
   description: "Sistema moderno de control de stock en tiempo real",
-    generator: 'v0.dev'
 }
 
 export default function RootLayout({

@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
 import {
@@ -68,7 +69,16 @@ export function Sidebar() {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center justify-center h-16 px-4 border-b border-gray-200">
-            <h1 className="text-xl font-bold text-gray-900">StockControl</h1>
+            <div className="flex items-center space-x-2">
+              <Image
+                src="/logo.png"
+                alt="ControlStock Logo"
+                width={50}
+                height={50}
+                className="flex-shrink-0"
+              />
+              <h1 className="text-xl font-bold text-gray-900">Control de stock</h1>
+            </div>
           </div>
 
           {/* User info */}
