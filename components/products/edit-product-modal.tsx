@@ -23,6 +23,7 @@ interface Product {
   name: string
   description?: string
   unit: string
+  currentStock?: number
   minStock: number
   categories?: Array<{
     category: {
@@ -30,6 +31,9 @@ interface Product {
       name: string
     }
   }>
+  _count?: {
+    movements: number
+  }
 }
 
 interface ProductFormData {

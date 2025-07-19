@@ -10,11 +10,11 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, AlertTriangle, Package, ArrowUpCircle, ArrowDownCircle } from "lucide-react"
+import { Search, AlertTriangle, Package, ArrowUpCircle, ArrowDownCircle, Edit } from "lucide-react"
 import { StockInModal, StockOutModal, useStockMovements } from "@/components/stock/stock-movements"
 import { ExportExcelButton } from "@/components/ui/export-excel-button"
 import { CategorySelector } from "@/components/ui/category-selector"
+import { EditProductModal } from "@/components/products/edit-product-modal"
 
 interface Product {
   id: string
@@ -53,11 +53,11 @@ function filterStockProducts(products: Product[], search: string, categoryId: st
     // Filtro por búsqueda (código, nombre, descripción)
     if (search) {
       const searchLower = search.toLowerCase()
-      const matchesSearch = 
+      const matchesSearch =
         product.code.toLowerCase().includes(searchLower) ||
         product.name.toLowerCase().includes(searchLower) ||
         (product.description && product.description.toLowerCase().includes(searchLower))
-      
+
       if (!matchesSearch) {
         return false
       }
@@ -79,9 +79,16 @@ function filterStockProducts(products: Product[], search: string, categoryId: st
 function StockPageContent() {
   const [search, setSearch] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
-  
+  const [editProductDialog, setEditProductDialog] = useState(false)
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+
   const searchParams = useSearchParams()
   const { stockIn, stockOut } = useStockMovements()
+
+  const handleEditProduct = (product: Product) => {
+    setEditingProduct(product)
+    setEditProductDialog(true)
+  }
 
   // Auto-open modals based on URL params
   useEffect(() => {
@@ -130,7 +137,7 @@ function StockPageContent() {
               <ArrowDownCircle className="h-4 w-4 mr-2" />
               Salida
             </Button>
-            <ExportExcelButton 
+            <ExportExcelButton
               data={filteredProducts}
               type="stock"
               filename={`stock-${new Date().toISOString().split("T")[0]}.xlsx`}
@@ -198,6 +205,7 @@ function StockPageContent() {
                       <TableHead>Unidad</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead className="text-right">Movimientos</TableHead>
+                      <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -258,6 +266,17 @@ function StockPageContent() {
                             )}
                           </TableCell>
                           <TableCell className="text-right text-sm text-gray-500">{product._count.movements}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => handleEditProduct(product)}
+                              title="Editar producto"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       )
                     })}
@@ -273,14 +292,20 @@ function StockPageContent() {
         </Card>
       </div>
 
-      <StockInModal 
-        open={stockIn.open} 
-        onOpenChange={stockIn.setOpen} 
+      <StockInModal
+        open={stockIn.open}
+        onOpenChange={stockIn.setOpen}
       />
-      
-      <StockOutModal 
-        open={stockOut.open} 
-        onOpenChange={stockOut.setOpen} 
+
+      <StockOutModal
+        open={stockOut.open}
+        onOpenChange={stockOut.setOpen}
+      />
+
+      <EditProductModal
+        open={editProductDialog}
+        onOpenChange={setEditProductDialog}
+        product={editingProduct}
       />
     </MainLayout>
   )
